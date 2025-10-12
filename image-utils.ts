@@ -142,7 +142,7 @@ export default class ImageUtils {
     /**
      * Upscale image. Optionally copies unprocessed files (due to an error) to a folder.
      */
-    public static upscaleImage = async <T extends Formats>(src: string, destFolder: string, 
+    public static upscaleImage = async (src: string, destFolder: string, 
         options?: Waifu2xOptions, unprocessedFolder: boolean = true) => {
         let dest = path.join(destFolder, path.basename(src))
 
@@ -212,7 +212,7 @@ export default class ImageUtils {
     /**
      * Shorthand process images with only a upscale. 
      */
-    public static upscaleImages = <T extends Formats>(sourceFolder: string, destFolder: string, 
+    public static upscaleImages = (sourceFolder: string, destFolder: string, 
         options?: Waifu2xOptions, unprocessedFolder: boolean = true) => {
         return this.processImages(sourceFolder, 
             async (file) => this.upscaleImage(file, destFolder, options, unprocessedFolder)
