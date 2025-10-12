@@ -29,7 +29,7 @@ await imageUtils.fixFileExtensions(folder)
 ```
 
 Lastly, the function `moepicsProcess` will takes a folder of anime images and will generate the compressed 
-and upscaled versions that are suitable to upload to my website, moepictures.moe. 
+and upscaled versions that are suitable to upload to my website, https://moepictures.moe. 
 
 ```ts
 import imageUtils from "animepic-utils"
