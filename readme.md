@@ -28,7 +28,9 @@ import imageUtils from "animepic-utils"
 await imageUtils.fixFileExtensions(folder)
 ```
 
-Lastly, the function `moepicsProcess` will takes a folder of anime images and will generate the compressed 
+### Moepictures specific
+
+The function `moepicsProcess` takes a folder of anime images and will generate the compressed 
 and upscaled versions that are suitable to upload to my website, https://moepictures.moe. 
 
 ```ts
@@ -36,3 +38,24 @@ import imageUtils from "animepic-utils"
 
 await imageUtils.moepicsProcess(folder)
 ```
+
+We also use filename qualifiers in order to group related images. Images can be grouped together 
+as variations, grouped separately as groups, added as child posts to the first image (_c0), or 
+uploaded completely separately. This comes from most posts on pixiv already using the `_p0` (page number) 
+qualifier in the names.
+
+You can change the qualifiers for images in a folder with the `changeQualifiers` method.
+
+```ts
+import imageUtils from "animepic-utils"
+
+await imageUtils.changeQualifiers(folder, "g")
+```
+
+These are the full list of qualifiers:
+
+- `_s` or none - Uploads images seperately without any grouping
+- `_p` - Joins images together into one post as variations
+- `_g` - Uploads images seperately but adds them to the same group
+- `_c` - Adds images as child posts to the first in a set (`_c0`)
+- `_c!` - Adds the image as a *variation* to the previous child post

@@ -268,4 +268,26 @@ export default class ImageUtils {
         this.splitFolder(compressed)
         this.splitFolder(upscaled)
     }
+
+    /**
+     * Adds the _p, _s, _g, or _c qualifier to images
+     */
+    public static changeQualifiers = (folder: string, qualifier: "p" | "s" | "g" | "c" = "p") => {
+        const files = fs.readdirSync(folder).filter((f) => f !== ".DS_Store")
+        for (const file of files) {
+            const {name, ext} = path.parse(file)
+
+            const match = name.match(/(_s|_p|_g|_c!?)(\d+)?$/)
+
+            let newName = `${name}_${qualifier}0`
+            if (match) {
+                const num = match[2] ?? 0
+                newName = name.replace(/(_s|_p|_g|_c!?)(\d+)?$/, `_${qualifier}${num}`);
+            }
+
+            const src = path.join(folder, file)
+            const dest = path.join(folder, `${newName}${ext}`)
+            fs.renameSync(src, dest)
+        }
+    }
 }
