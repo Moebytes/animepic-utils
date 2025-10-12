@@ -2,7 +2,7 @@ import "dotenv/config"
 import imageUtils from "./image-utils"
 
 const start = async () => {
-    await imageUtils.splitFolder(process.env.FOLDER!)
+    console.log(await imageUtils.isTransparent("./downloads/a.png"))
 }
 
 start()

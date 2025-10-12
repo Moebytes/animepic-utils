@@ -84,11 +84,11 @@ export default class ImageUtils {
 
         const {data, info} = await image.ensureAlpha().raw().toBuffer({resolveWithObject: true})
 
+        let counter = 0
         for (let i = 3; i < data.length; i += info.channels) {
-            if (data[i] === 0) return true
+            if (data[i] === 0) counter++
         }
-
-        return false
+        return counter > 100000
     }
 
     /**
