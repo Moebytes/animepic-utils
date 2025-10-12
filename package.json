@@ -6,7 +6,8 @@
   "types": "dist/image-utils.d.ts",
   "scripts": {
     "start": "tsc && node dist/pics.js",
-    "clean": "del-cli ./dist"
+    "clean": "del-cli ./dist",
+    "prepublishOnly": "tsc"
   },
   "keywords": ["anime", "image", "utils"],
   "author": "Moebytes",

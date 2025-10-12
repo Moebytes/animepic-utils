@@ -175,7 +175,7 @@ export default class ImageUtils {
     /**
      * Processes an image folder with a custom chain of operations.
      */
-    public static processImages = async <T extends Formats>(folder: string, 
+    public static processImages = async (folder: string, 
         ...operations: Array<(file: string) => Promise<string>>) => {
         const files = fs.readdirSync(folder).filter((f) => f !== ".DS_Store")
         let i = 1
