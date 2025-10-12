@@ -149,7 +149,8 @@ export default class ImageUtils {
         let target = src
         let isWebp = path.extname(src) === ".webp"
         let isAvif = path.extname(src) === ".avif"
-        if (isWebp || isAvif) {
+        let isJxl = path.extname(src) === ".jxl"
+        if (isWebp || isAvif || isJxl) {
             fs.copyFileSync(src, dest)
             target = await this.convertImage(dest, "png")
         }
@@ -159,6 +160,8 @@ export default class ImageUtils {
             await this.convertImage(result, "webp")
         } else if (isAvif) {
             await this.convertImage(result, "avif")
+        } else if (isJxl) {
+            await this.convertImage(result, "jxl")
         }
 
         if (!fs.existsSync(dest) && unprocessedFolder) {
