@@ -2,8 +2,8 @@
   "name": "animepic-utils",
   "version": "0.0.1",
   "description": "Node.js utils for processing anime images",
-  "main": "dist/entities/ImageUtils.js",
-  "types": "dist/entities/ImageUtils.d.ts",
+  "main": "dist/image-utils.js",
+  "types": "dist/image-utils.d.ts",
   "scripts": {
     "start": "tsc && node dist/pics.js",
     "clean": "del-cli ./dist"
