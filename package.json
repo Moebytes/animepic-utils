@@ -1,0 +1,24 @@
+{
+  "name": "animepic-utils",
+  "version": "0.0.1",
+  "description": "Node.js utils for processing anime images",
+  "main": "dist/entities/ImageUtils.js",
+  "types": "dist/entities/ImageUtils.d.ts",
+  "scripts": {
+    "start": "tsc && node dist/pics.js",
+    "clean": "del-cli ./dist"
+  },
+  "keywords": ["anime", "image", "utils"],
+  "author": "Moebytes",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "del-cli": "^7.0.0",
+    "dotenv": "^17.2.3",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "sharp": "^0.34.4",
+    "waifu2x": "^1.5.1"
+  }
+}

@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "outDir": "dist",
+        "declaration": true,
+        "noImplicitAny": false,
+        "moduleResolution": "node",
+        "target": "es2023",
+        "module": "commonjs",
+        "lib": ["es2023", "dom"],
+        "allowJs": true,
+        "allowSyntheticDefaultImports": true,
+        "jsx": "react-jsx",
+        "esModuleInterop": true,
+        "strict": true,
+        "strictNullChecks": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true
+    },
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}
