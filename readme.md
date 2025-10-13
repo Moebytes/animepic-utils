@@ -54,8 +54,9 @@ await imageUtils.changeQualifiers(folder, "g")
 
 These are the full list of qualifiers:
 
-- `_s` or none - Uploads images seperately without any grouping
+- `_s` or none - Uploads images seperately
 - `_p` - Joins images together into one post as variations
 - `_g` - Uploads images seperately but adds them to the same group
-- `_c` - Adds images as child posts to the first in a set (`_c0`)
+- `_g!` - Adds the image as a *variation* to the previous group post
+- `_c` - Adds images as child posts to the first in the set (`_c0`)
 - `_c!` - Adds the image as a *variation* to the previous child post
