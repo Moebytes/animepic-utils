@@ -28,7 +28,17 @@ import imageUtils from "animepic-utils"
 await imageUtils.fixFileExtensions(folder)
 ```
 
-### Moepictures specific
+### Anime specific
+
+The function `recoverFromDanbooru` takes a folder of arbitrarily named images and attempts to recover 
+the original pixiv/twitter files from the largest mirror site, danbooru. Files which are unrecoverable 
+will be put in an "unrecoverable" folder, usually because it wasn't found on danbooru. 
+
+```ts
+import imageUtils from "animepic-utils"
+
+await imageUtils.recoverFromDanbooru(folder)
+```
 
 The function `moepicsProcess` takes a folder of anime images and will generate the compressed 
 and upscaled versions that are suitable to upload to my website, https://moepictures.moe. 

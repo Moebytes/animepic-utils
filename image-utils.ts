@@ -2,6 +2,7 @@ import fs from "fs"
 import path from "path"
 import sharp from "sharp"
 import waifu2x, {Waifu2xOptions} from "waifu2x"
+import * as cheerio from "cheerio"
 
 type Formats = "jpg" | "png" | "webp" | "avif" | "jxl"
 
@@ -19,6 +20,7 @@ export default class ImageUtils {
      */
     public static fixFileExtensions = async (folder: string) => {
         const files = fs.readdirSync(folder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
         for (const file of files) {
             let filepath = path.join(folder, file)
             if (fs.lstatSync(filepath).isDirectory()) continue
@@ -36,6 +38,7 @@ export default class ImageUtils {
      */
     public static copyImages = (sourceFolder: string, destFolder: string) => {
         const files = fs.readdirSync(sourceFolder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
         for (const file of files) {
             let src = path.join(sourceFolder, file)
             if (fs.lstatSync(src).isDirectory()) continue
@@ -49,6 +52,7 @@ export default class ImageUtils {
      */
     public static moveImages = (sourceFolder: string, destFolder: string) => {
         const files = fs.readdirSync(sourceFolder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
         for (const file of files) {
             let src = path.join(sourceFolder, file)
             if (fs.lstatSync(src).isDirectory()) continue
@@ -178,6 +182,7 @@ export default class ImageUtils {
     public static processImages = async (folder: string, 
         ...operations: Array<(file: string) => Promise<string>>) => {
         const files = fs.readdirSync(folder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
         let i = 1
         for (const file of files) {
             console.log(`${i}/${files.length}  -> ${file}`)
@@ -274,6 +279,7 @@ export default class ImageUtils {
      */
     public static changeQualifiers = (folder: string, qualifier: "p" | "s" | "g" | "c" = "p") => {
         const files = fs.readdirSync(folder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
         for (const file of files) {
             const {name, ext} = path.parse(file)
 
@@ -288,6 +294,138 @@ export default class ImageUtils {
             const src = path.join(folder, file)
             const dest = path.join(folder, `${newName}${ext}`)
             fs.renameSync(src, dest)
+        }
+    }
+
+    /**
+     * Reverse searches the image to find danbooru post.
+     */
+    public static reverseDanbooruSearch = async (filepath: string, minSimilarity = 75) => {
+        const buffer = new Uint8Array(fs.readFileSync(filepath)).buffer
+
+        const form = new FormData()
+        form.append("file", new Blob([buffer], {type: "image/png"}))
+
+        const html = await fetch("https://iqdb.org/", {method: "POST", body: form}).then((r) => r.text())
+        const $ = cheerio.load(html)
+
+        let result = [] as any[]
+        let downloadLinks = [] as string[]
+        let promises = [] as Promise<void>[]
+
+        const appendDanbooru = async (link: string) => {
+            const json = await fetch(`${link}.json`).then((r) => r.json())
+            result.push(json)
+        }
+
+        const appendZerochanDownload = async (link: string) => {
+            const json = await fetch(`${link}?json`).then((r) => r.json())
+            downloadLinks.push(json.full)
+        }
+        const appendGelbooruDownload = async (link: string) => {
+            let baseURL = `https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1&id=`
+            const result = await fetch(`${baseURL}${link.match(/\d+/)?.[0]}`).then((r) => r.json())
+            downloadLinks.push(result.post[0]?.file_url)
+        }
+        const appendSafebooruDownload = async (link: string) => {
+            let baseURL = `https://safebooru.org//index.php?page=dapi&s=post&q=index&json=1&id=`
+            const result = await fetch(`${baseURL}${link.match(/\d+/)?.[0]}`).then((r) => r.json())
+            downloadLinks.push(result[0]?.file_url)
+        }
+        const appendYandereDownload = async (link: string) => {
+            console.log(link.match(/\d+/)?.[0])
+            const result = await fetch(`https://yande.re/post.json?tags=id:${link.match(/\d+/)?.[0]}`).then((r) => r.json())
+            downloadLinks.push(result[0]?.file_url)
+        }
+        const appendKonachanDownload = async (link: string) => {
+            const result = await fetch(`https://konachan.com/post.json?tags=id:${link.match(/\d+/)?.[0]}`).then((r) => r.json())
+            downloadLinks.push(result[0]?.file_url)
+        }
+
+        $("#pages > div").each((i, el) => {
+            let link = ($(el).find("a").first().attr("href") || "").replace(/^\/\//, "http://").replace("http://", "https://")
+            let link2 = ($(el).find("a").last().attr("href") || "").replace(/^\/\//, "http://").replace("http://", "https://")
+            const textTds = $(el).find("td").filter((_, td) => $(td).children("img").length === 0)
+                .map((_, td) => $(td).text().trim()).get()
+            const similarity = parseFloat(textTds.find(text => /% similarity$/.test(text)) || "")
+
+            if (similarity > minSimilarity) {
+                if (link.includes("danbooru.donmai.us")) promises.push(appendDanbooru(link))
+
+                if (link.includes("zerochan.net")) promises.push(appendZerochanDownload(link))
+                if (link2.includes("gelbooru.com")) promises.push(appendGelbooruDownload(link))
+                if (link2.includes("safebooru.org")) promises.push(appendSafebooruDownload(link))
+                if (link.includes("yande.re")) promises.push(appendYandereDownload(link))
+                if (link.includes("konachan.com")) promises.push(appendKonachanDownload(link))
+            }
+        })
+
+        await Promise.allSettled(promises)
+        if (result.length === 1) {
+            if (!result[0].file_url) result[0].file_url = downloadLinks[0]
+        }
+        return result
+    }
+
+    /**
+     * Attempts to recover arbitrarily named posts from danbooru, if they exist.
+     */
+    public static recoverFromDanbooru = async (folder: string) => {
+        const original = path.join(folder, "original")
+        const pixiv = path.join(folder, "pixiv")
+        const twitter = path.join(folder, "twitter")
+        const comic = path.join(folder, "comic")
+        const unrecoverable = path.join(folder, "unrecoverable")
+        if (!fs.existsSync(original)) fs.mkdirSync(original)
+
+        this.moveImages(folder, original)
+
+        const files = fs.readdirSync(original).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
+        for (const file of files) {
+            const pixivID = file.match(/\d+/)?.[0]
+            let result = [] as any[]
+            if (pixivID) result = await fetch(`https://danbooru.donmai.us/posts.json?tags=pixiv_id%3A${pixivID}&limit=1000`).then((r) => r.json())
+            if (!result.length) result = await this.reverseDanbooruSearch(path.join(original, file))
+            if (result.length) {
+                let isComic = false
+                for (const json of result) {
+                    if (json.tag_string.includes("comic")) isComic = true
+                }
+                for (const json of result) {
+                    let filename = path.basename(json.source)
+                    if (json.source.includes("twitter.com") || json.source.includes("x.com")) {
+                        filename = `twitter_${filename}.${json.file_ext}`
+                    }
+                    const downloadLink = json.file_url
+                    if (!downloadLink) {
+                        if (!fs.existsSync(unrecoverable)) fs.mkdirSync(unrecoverable)
+                        let src = path.join(original, file)
+                        let dest = path.join(unrecoverable, file)
+                        fs.copyFileSync(src, dest)
+                    } else {
+                        const buffer = await fetch(downloadLink).then((r) => r.arrayBuffer())
+                        if (json.source.includes("twitter.com") || json.source.includes("x.com")) {
+                            if (!fs.existsSync(twitter)) fs.mkdirSync(twitter)
+                            let dest = path.join(twitter, filename)
+                            fs.writeFileSync(dest, new Uint8Array(buffer))
+                        } else if (isComic) {
+                            if (!fs.existsSync(comic)) fs.mkdirSync(comic)
+                            let dest = path.join(comic, filename)
+                            fs.writeFileSync(dest, new Uint8Array(buffer))
+                        } else {  
+                            if (!fs.existsSync(pixiv)) fs.mkdirSync(pixiv)
+                            let dest = path.join(pixiv, filename)
+                            fs.writeFileSync(dest, new Uint8Array(buffer))
+                        }
+                    }
+                }
+            } else {
+                if (!fs.existsSync(unrecoverable)) fs.mkdirSync(unrecoverable)
+                let src = path.join(original, file)
+                let dest = path.join(unrecoverable, file)
+                fs.copyFileSync(src, dest)
+            }
         }
     }
 }
