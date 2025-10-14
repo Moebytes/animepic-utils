@@ -481,7 +481,7 @@ export default class ImageUtils {
         let i = 1
         for (const file of files) {
             console.log(`${i}/${files.length}  -> ${file}`)
-            let pixivID = file.match(/^\d{5,}(?=$|_)/)?.[0]
+            let pixivID = file.match(/^\d{5,}(?=\.|_)/)?.[0]
             if (pixivID) {
                 try {
                     let illust = await pixiv.illust.get(pixivID)
