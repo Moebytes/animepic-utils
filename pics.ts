@@ -6,9 +6,9 @@ const start = async () => {
     let folder = process.env.FOLDER!
 
     // await imageUtils.recoverFromPixiv(folder, pixivKey)
-    await imageUtils.filterAIImages(folder, pixivKey)
-    // await imageUtils.moepicsProcess(process.env.FOLDER!)
-    // imageUtils.changeQualifiers(process.env.FOLDER!, "c")
+    // await imageUtils.filterAIImages(folder, pixivKey)
+    await imageUtils.moepicsProcess(folder)
+    // imageUtils.changeQualifiers(folder, "c")
 }
 
 start()

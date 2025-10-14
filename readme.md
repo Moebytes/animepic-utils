@@ -71,7 +71,7 @@ await imageUtils.filterAIImages(folder, process.env.PIXIV_REFRESH_TOKEN)
 ```
 
 The function `moepicsProcess` takes a folder of anime images and will generate the compressed 
-and upscaled versions that are suitable to upload to my website, https://moepictures.moe. 
+and upscaled versions that are suitable to upload to my website, https://moepictures.net.
 
 ```ts
 import imageUtils from "animepic-utils"
@@ -97,6 +97,6 @@ These are the full list of qualifiers:
 - `_s` or none - Uploads images seperately
 - `_p` - Joins images together into one post as variations
 - `_g` - Uploads images seperately but adds them to the same group
-- `_g!` - Adds the image as a *variation* to the previous group post
+- `_g!` - Adds the image as a variation to the previous group post
 - `_c` - Adds images as child posts to the first in the set (`_c0`)
-- `_c!` - Adds the image as a *variation* to the previous child post
+- `_c!` - Adds the image as a variation to the previous child post

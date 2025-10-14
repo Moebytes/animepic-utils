@@ -1,6 +1,6 @@
 {
   "name": "animepic-utils",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Node.js utils for processing anime images",
   "main": "dist/image-utils.js",
   "types": "dist/image-utils.d.ts",
