@@ -1,4 +1,11 @@
-## Animepic Utils
+<div align="left">
+  <p>
+    <img src="https://github.com/Moebytes/animepic-utils/blob/main/title.png?raw=true" width="700" />
+  </p>
+  <p>
+    <a href="https://nodei.co/npm/animepic-utils/"><img src="https://nodei.co/npm/animepic-utils.png" /></a>
+  </p>
+</div>
 
 Some utilities for processing anime images. (However I guess it'll work for any images).
 
