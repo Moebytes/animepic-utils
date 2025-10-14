@@ -9,6 +9,11 @@
 
 Some utilities for processing anime images. (However I guess it'll work for any images).
 
+### Pixiv Refresh Token
+
+To obtain your pixiv refresh token for the methods that require it, you can use the pixivauth.py script 
+from PixivPy. I included it in the base of the github repository.
+
 The primary function is `processImages` that accepts a folder of images, and then a variable 
 amount of processing functions that will be applied to every image in the folder. The processing functions 
 should take the current file parameter and return the path to the output, this is then fed back as the 
@@ -37,14 +42,32 @@ await imageUtils.fixFileExtensions(folder)
 
 ### Anime specific
 
-The function `recoverFromDanbooru` takes a folder of arbitrarily named images and attempts to recover 
-the original pixiv/twitter files from the largest mirror site, danbooru. Files which are unrecoverable 
-will be put in an "unrecoverable" folder, usually because it wasn't found on danbooru. 
+The function `recoverFromPixiv` takes a folder of arbitrarily named images and attempts to recover 
+the original images from pixiv, or danbooru as a fallback. Files which are unrecoverable 
+will be put into an "unrecoverable" folder, usually because it was deleted and not archived anywhere.
 
 ```ts
 import imageUtils from "animepic-utils"
 
-await imageUtils.recoverFromDanbooru(folder)
+await imageUtils.recoverFromPixiv(folder, process.env.PIXIV_REFRESH_TOKEN)
+```
+
+The `reverseImageSearch` function reverse searches the image on iqdb and returns the found danbooru post, 
+since usually this is the site with the most info.
+
+```ts
+import imageUtils from "animepic-utils"
+
+await imageUtils.reverseImageSearch(imagePath)
+```
+
+The `filterAIImages` function attempts to filter out AI images from a folder containing pixiv images. If 
+you have images that aren't on pixiv, you will have to use your best judgement...
+
+```ts
+import imageUtils from "animepic-utils"
+
+await imageUtils.filterAIImages(folder, process.env.PIXIV_REFRESH_TOKEN)
 ```
 
 The function `moepicsProcess` takes a folder of anime images and will generate the compressed 

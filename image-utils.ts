@@ -2,6 +2,7 @@ import fs from "fs"
 import path from "path"
 import sharp from "sharp"
 import waifu2x, {Waifu2xOptions} from "waifu2x"
+import Pixiv, { PixivIllust } from "pixiv.ts"
 import * as cheerio from "cheerio"
 
 type Formats = "jpg" | "png" | "webp" | "avif" | "jxl"
@@ -300,7 +301,7 @@ export default class ImageUtils {
     /**
      * Reverse searches the image to find danbooru post.
      */
-    public static reverseDanbooruSearch = async (filepath: string, minSimilarity = 75) => {
+    public static reverseImageSearch = async (filepath: string, minSimilarity = 75) => {
         const buffer = new Uint8Array(fs.readFileSync(filepath)).buffer
 
         const form = new FormData()
@@ -309,15 +310,13 @@ export default class ImageUtils {
         const html = await fetch("https://iqdb.org/", {method: "POST", body: form}).then((r) => r.text())
         const $ = cheerio.load(html)
 
-        let result = [] as any[]
+        let result = {} as any
         let downloadLinks = [] as string[]
         let promises = [] as Promise<void>[]
 
         const appendDanbooru = async (link: string) => {
-            const json = await fetch(`${link}.json`).then((r) => r.json())
-            result.push(json)
+            result = await fetch(`${link}.json`).then((r) => r.json())
         }
-
         const appendZerochanDownload = async (link: string) => {
             const json = await fetch(`${link}?json`).then((r) => r.json())
             downloadLinks.push(json.full)
@@ -333,7 +332,6 @@ export default class ImageUtils {
             downloadLinks.push(result[0]?.file_url)
         }
         const appendYandereDownload = async (link: string) => {
-            console.log(link.match(/\d+/)?.[0])
             const result = await fetch(`https://yande.re/post.json?tags=id:${link.match(/\d+/)?.[0]}`).then((r) => r.json())
             downloadLinks.push(result[0]?.file_url)
         }
@@ -361,71 +359,151 @@ export default class ImageUtils {
         })
 
         await Promise.allSettled(promises)
-        if (result.length === 1) {
-            if (!result[0].file_url) result[0].file_url = downloadLinks[0]
+        if (result.id) {
+            if (!result.file_url) result.file_url = downloadLinks[0]
         }
         return result
     }
 
     /**
-     * Attempts to recover arbitrarily named posts from danbooru, if they exist.
+     * Attempts to recover arbitrarily named posts from pixiv, or danbooru as fallback.
      */
-    public static recoverFromDanbooru = async (folder: string) => {
-        const original = path.join(folder, "original")
-        const pixiv = path.join(folder, "pixiv")
-        const twitter = path.join(folder, "twitter")
-        const comic = path.join(folder, "comic")
-        const unrecoverable = path.join(folder, "unrecoverable")
-        if (!fs.existsSync(original)) fs.mkdirSync(original)
+    public static recoverFromPixiv = async (folder: string, pixivRefreshToken?: string) => {
+        const pixiv = await Pixiv.refreshLogin(pixivRefreshToken!)
+        const originalFolder = path.join(folder, "original")
+        const pixivFolder = path.join(folder, "pixiv")
+        const twitterFolder = path.join(folder, "twitter")
+        const otherFolder = path.join(folder, "other")
+        const comicFolder = path.join(folder, "comic")
+        const unrecoverableFolder = path.join(folder, "unrecoverable")
+        if (!fs.existsSync(originalFolder)) fs.mkdirSync(originalFolder)
 
-        this.moveImages(folder, original)
+        this.moveImages(folder, originalFolder)
 
-        const files = fs.readdirSync(original).filter((f) => f !== ".DS_Store")
+        const files = fs.readdirSync(originalFolder).filter((f) => f !== ".DS_Store")
         .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
+
+        let i = 1
         for (const file of files) {
-            const pixivID = file.match(/\d+/)?.[0]
-            let result = [] as any[]
-            if (pixivID) result = await fetch(`https://danbooru.donmai.us/posts.json?tags=pixiv_id%3A${pixivID}&limit=1000`).then((r) => r.json())
-            if (!result.length) result = await this.reverseDanbooruSearch(path.join(original, file))
-            if (result.length) {
-                let isComic = false
-                for (const json of result) {
+            console.log(`${i}/${files.length}  -> ${file}`)
+            let pixivID = file.match(/^\d{5,}(?=$|_)/)?.[0]
+            let danbooruPosts: any[] = []
+            let isComic = false
+
+            if (pixivID) {
+                danbooruPosts = await fetch(`https://danbooru.donmai.us/posts.json?tags=pixiv_id%3A${pixivID}&limit=1000`).then((r) => r.json())
+            } else {
+                const danbooruPost = await this.reverseImageSearch(path.join(originalFolder, file))
+                if (Object.keys(danbooruPost).length) danbooruPosts = [danbooruPost]
+                if (danbooruPosts[0]?.source.includes("pximg.net") || danbooruPosts[0]?.source.includes("pixiv.net")) {
+                    pixivID = path.basename(danbooruPosts[0].source).match(/\d+/)?.[0]
+                }
+            }
+
+            if (danbooruPosts.length) {
+                for (const json of danbooruPosts) {
                     if (json.tag_string.includes("comic")) isComic = true
                 }
-                for (const json of result) {
+            }
+
+            try {
+                if (pixivID) {
+                    let illust = await pixiv.illust.get(pixivID)
+                    if (illust.width === 100 && illust.height === 100 && path.basename(illust.image_urls.medium)
+                        .includes("limit_unknown")) throw new Error("bad illust")
+                    let multiFolder = isComic ? comicFolder : pixivFolder
+                    await pixiv.util.downloadIllust(illust, pixivFolder, "original", multiFolder)
+                    i++
+                    continue
+                }
+            } catch {}
+
+            if (danbooruPosts.length) {
+                for (const json of danbooruPosts) {
                     let filename = path.basename(json.source)
-                    if (json.source.includes("twitter.com") || json.source.includes("x.com")) {
+                    if (!filename.includes(".")) filename += ".png"
+                    if (json.source.includes("pximg.net") || json.source.includes("pixiv.net")) {
+                        filename = path.basename(json.source)
+                    } else if (json.source.includes("twitter.com") || json.source.includes("x.com")) {
                         filename = `twitter_${filename}.${json.file_ext}`
                     }
                     const downloadLink = json.file_url
-                    if (!downloadLink) {
-                        if (!fs.existsSync(unrecoverable)) fs.mkdirSync(unrecoverable)
-                        let src = path.join(original, file)
-                        let dest = path.join(unrecoverable, file)
-                        fs.copyFileSync(src, dest)
-                    } else {
+                    if (downloadLink) {
                         const buffer = await fetch(downloadLink).then((r) => r.arrayBuffer())
                         if (json.source.includes("twitter.com") || json.source.includes("x.com")) {
-                            if (!fs.existsSync(twitter)) fs.mkdirSync(twitter)
-                            let dest = path.join(twitter, filename)
+                            if (!fs.existsSync(twitterFolder)) fs.mkdirSync(twitterFolder)
+                            let dest = path.join(twitterFolder, filename)
                             fs.writeFileSync(dest, new Uint8Array(buffer))
                         } else if (isComic) {
-                            if (!fs.existsSync(comic)) fs.mkdirSync(comic)
-                            let dest = path.join(comic, filename)
+                            if (!fs.existsSync(comicFolder)) fs.mkdirSync(comicFolder)
+                            let dest = path.join(comicFolder, filename)
                             fs.writeFileSync(dest, new Uint8Array(buffer))
-                        } else {  
-                            if (!fs.existsSync(pixiv)) fs.mkdirSync(pixiv)
-                            let dest = path.join(pixiv, filename)
+                        } else if (json.source.includes("pximg.net") || json.source.includes("pixiv.net")) {  
+                            if (!fs.existsSync(pixivFolder)) fs.mkdirSync(pixivFolder)
+                            let dest = path.join(pixivFolder, filename)
+                            fs.writeFileSync(dest, new Uint8Array(buffer))
+                        } else {
+                            if (!fs.existsSync(otherFolder)) fs.mkdirSync(otherFolder)
+                            let dest = path.join(otherFolder, filename)
                             fs.writeFileSync(dest, new Uint8Array(buffer))
                         }
+                    } else {
+                        if (!fs.existsSync(unrecoverableFolder)) fs.mkdirSync(unrecoverableFolder)
+                        let src = path.join(originalFolder, file)
+                        let dest = path.join(unrecoverableFolder, file)
+                        fs.copyFileSync(src, dest)
                     }
                 }
             } else {
-                if (!fs.existsSync(unrecoverable)) fs.mkdirSync(unrecoverable)
-                let src = path.join(original, file)
-                let dest = path.join(unrecoverable, file)
+                if (!fs.existsSync(unrecoverableFolder)) fs.mkdirSync(unrecoverableFolder)
+                let src = path.join(originalFolder, file)
+                let dest = path.join(unrecoverableFolder, file)
                 fs.copyFileSync(src, dest)
             }
+            i++
+        }
+    }
+
+    /**
+     * Attempts to filter AI images on a folder containing images from pixiv.
+     */
+    public static filterAIImages = async (folder: string, pixivRefreshToken?: string) => {
+        const pixiv = await Pixiv.refreshLogin(pixivRefreshToken!)
+        const originalFolder = path.join(folder, "original")
+        const aiFolder = path.join(folder, "ai")
+        const errorFolder = path.join(folder, "error")
+        if (!fs.existsSync(originalFolder)) fs.mkdirSync(originalFolder)
+
+        this.moveImages(folder, originalFolder)
+
+        const files = fs.readdirSync(originalFolder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
+        let i = 1
+        for (const file of files) {
+            console.log(`${i}/${files.length}  -> ${file}`)
+            let pixivID = file.match(/^\d{5,}(?=$|_)/)?.[0]
+            if (pixivID) {
+                try {
+                    let illust = await pixiv.illust.get(pixivID)
+                    if (pixiv.util.isAI(illust)) {
+                        if (!fs.existsSync(aiFolder)) fs.mkdirSync(aiFolder)
+                        let src = path.join(originalFolder, file)
+                        let dest = path.join(aiFolder, file)
+                        fs.renameSync(src, dest)
+                    }
+                } catch {
+                    if (!fs.existsSync(errorFolder)) fs.mkdirSync(errorFolder)
+                    let src = path.join(originalFolder, file)
+                    let dest = path.join(errorFolder, file)
+                    fs.renameSync(src, dest)
+                }
+            } else {
+                if (!fs.existsSync(errorFolder)) fs.mkdirSync(errorFolder)
+                let src = path.join(originalFolder, file)
+                let dest = path.join(errorFolder, file)
+                fs.renameSync(src, dest)
+            }
+            i++
         }
     }
 }
