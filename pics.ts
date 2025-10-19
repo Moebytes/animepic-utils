@@ -1,14 +1,17 @@
 import "dotenv/config"
-import imageUtils from "./image-utils"
+import utils from "./utils"
 
 const start = async () => {
     let pixivKey = process.env.PIXIV_REFRESH_TOKEN!
-    let folder = process.env.FOLDER!
+    let recoveryFolder = process.env.RECOVERY_FOLDER!
+    let processFolder = process.env.PROCESS_FOLDER!
 
-    // await imageUtils.recoverFromPixiv(folder, pixivKey)
-    // await imageUtils.filterAIImages(folder, pixivKey)
-    await imageUtils.moepicsProcess(folder)
-    // imageUtils.changeQualifiers(folder, "c")
+    // await utils.image.recoverFromPixiv(recoveryFolder, pixivKey)
+    // await utils.image.filterAIImages(recoveryFolder, pixivKey)
+    // await utils.image.moepicsProcess(processFolder)
+    // utils.image.changeQualifiers(processFolder, "c")
+
+    await utils.animation.upscaleUgoira(processFolder)
 }
 
 start()

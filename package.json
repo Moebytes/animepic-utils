@@ -1,9 +1,9 @@
 {
   "name": "animepic-utils",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Node.js utils for processing anime images",
-  "main": "dist/image-utils.js",
-  "types": "dist/image-utils.d.ts",
+  "main": "dist/utils.js",
+  "types": "dist/utils.d.ts",
   "scripts": {
     "start": "tsc && node dist/pics.js",
     "clean": "del-cli ./dist",
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "cheerio": "^1.1.2",
+    "jszip": "^3.10.1",
     "pixiv.ts": "^0.7.9",
     "sharp": "^0.34.4",
     "waifu2x": "^1.5.1"

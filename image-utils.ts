@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 import sharp from "sharp"
 import waifu2x, {Waifu2xOptions} from "waifu2x"
-import Pixiv, { PixivIllust } from "pixiv.ts"
+import Pixiv from "pixiv.ts"
 import * as cheerio from "cheerio"
 
 type Formats = "jpg" | "png" | "webp" | "avif" | "jxl"
