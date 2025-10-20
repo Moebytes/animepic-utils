@@ -67,12 +67,19 @@ export default class AnimationUtils {
         if (!fs.existsSync(upscaledFolder)) fs.mkdirSync(upscaledFolder)
         
         util.image.moveImages(extractPath, originalFolder)
-        fs.copyFileSync(path.join(originalFolder, "animation.json"), path.join(upscaledFolder, "animation.json"))
+        const animationPath = path.join(upscaledFolder, "animation.json")
+        fs.copyFileSync(path.join(originalFolder, "animation.json"), animationPath)
 
         await util.image.processImages(originalFolder, 
             async (file) => path.extname(file) !== ".json" ? util.image.upscaleImage(file, upscaledFolder, options) : file,
-            async (file) => path.extname(file) !== ".json" ? util.image.convertImage(file) : file
+            async (file) => path.extname(file) !== ".json" ? util.image.convertImage(file, "avif") : file
         )
+        const json = JSON.parse(fs.readFileSync(animationPath, "utf-8"))
+        for (let frame of json) {
+            frame.file = path.basename(frame.file, path.extname(frame.file)) + ".avif"
+        }
+        fs.writeFileSync(animationPath, JSON.stringify(json))
+        
         this.removeLocalDirectory(originalFolder)
         util.image.moveImages(upscaledFolder, extractPath)
         this.removeLocalDirectory(upscaledFolder)
