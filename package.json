@@ -1,6 +1,6 @@
 {
   "name": "animepic-utils",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Node.js utils for processing anime images",
   "main": "dist/utils.js",
   "types": "dist/utils.d.ts",
@@ -23,9 +23,11 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "cheerio": "^1.1.2",
+    "form-data": "^4.0.5",
     "jszip": "^3.10.1",
-    "pixiv.ts": "^0.7.9",
+    "pixiv.ts": "^0.8.7",
     "sharp": "^0.34.4",
     "waifu2x": "^1.5.1"
   }

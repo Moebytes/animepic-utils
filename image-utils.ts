@@ -1,6 +1,8 @@
 import fs from "fs"
 import path from "path"
 import sharp from "sharp"
+import NodeFormData from "form-data"
+import axios from "axios"
 import waifu2x, {Waifu2xOptions} from "waifu2x"
 import Pixiv from "pixiv.ts"
 import * as cheerio from "cheerio"
@@ -31,6 +33,25 @@ export default class ImageUtils {
             let newFile = `${path.basename(file, path.extname(file))}.${ext}`
             let newFilePath = path.join(folder, newFile)
             fs.renameSync(filepath, newFilePath)
+        }
+    }
+
+    /**
+     * Moves invalid image files.
+     */
+    public static moveInvalidImages = async (srcFolder: string, destFolder: string) => {
+        const files = fs.readdirSync(srcFolder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
+        for (const file of files) {
+            let filepath = path.join(srcFolder, file)
+            if (fs.lstatSync(filepath).isDirectory()) continue
+            const buffer = fs.readFileSync(filepath)
+            try {
+                await sharp(buffer, {limitInputPixels: false}).metadata()
+            } catch {
+                let destpath = path.join(destFolder, file)
+                fs.renameSync(filepath, destpath)
+            }
         }
     }
 
@@ -368,7 +389,7 @@ export default class ImageUtils {
     /**
      * Attempts to recover arbitrarily named posts from pixiv, or danbooru as fallback.
      */
-    public static recoverFromPixiv = async (folder: string, pixivRefreshToken?: string) => {
+    public static recoverFromPixiv = async (folder: string, pixivRefreshToken?: string, forceRevSearch?: boolean) => {
         const pixiv = await Pixiv.refreshLogin(pixivRefreshToken!)
         const originalFolder = path.join(folder, "original")
         const pixivFolder = path.join(folder, "pixiv")
@@ -386,7 +407,7 @@ export default class ImageUtils {
         let i = 1
         for (const file of files) {
             console.log(`${i}/${files.length}  -> ${file}`)
-            let pixivID = file.match(/^\d{5,}(?=$|_)/)?.[0]
+            let pixivID = forceRevSearch ? "" : file.match(/^\d{5,}(?=$|_)/)?.[0]
             let danbooruPosts: any[] = []
             let isComic = false
 
@@ -461,6 +482,67 @@ export default class ImageUtils {
                 fs.copyFileSync(src, dest)
             }
             i++
+        }
+    }
+
+    /**
+     * Attempts to recover pixiv posts from saucenao
+     */
+    public static recoverFromSaucenao = async (folder: string, saucenaoKey?: string, pixivRefreshToken?: string) => {
+        const pixiv = await Pixiv.refreshLogin(pixivRefreshToken!)
+        const originalFolder = path.join(folder, "original")
+        const pixivFolder = path.join(folder, "pixiv")
+        const unrecoverableFolder = path.join(folder, "unrecoverable")
+        if (!fs.existsSync(originalFolder)) fs.mkdirSync(originalFolder)
+
+        this.moveImages(folder, originalFolder)
+
+        const files = fs.readdirSync(originalFolder).filter((f) => f !== ".DS_Store")
+        .sort(new Intl.Collator(undefined, {numeric: true, sensitivity: "base"}).compare)
+
+        let i = 1
+        for (const file of files) {
+            console.log(`${i}/${files.length}  -> ${file}`)
+            i++
+
+            let buffer = fs.readFileSync(path.join(originalFolder, file))
+            let pngBuffer = await sharp(buffer, {limitInputPixels: false})
+                .resize(2000, 2000, {fit: "inside"}).png()
+                .toBuffer()
+            
+            const form = new NodeFormData()
+            form.append("db", "999")
+            form.append("api_key", saucenaoKey!)
+            form.append("output_type", 2)
+            form.append("file", pngBuffer, {
+                filename: `file.png`,
+                contentType: "image/png"
+            })
+
+            let results = await axios.post("https://saucenao.com/search.php", form, {headers: form.getHeaders()}).then((r) => r.data.results)
+            results = results.sort((a, b) => Number(b.header.similarity) - Number(a.header.similarity))
+            results = results.filter((r) => Number(r.header.similarity) > 70)
+
+            const pixivResults = results.filter((r) => r.header.index_id === 5)
+            if (pixivResults.length) {
+                let pixivID = pixivResults[0].data.pixiv_id
+                try {
+                    let illust = await pixiv.illust.get(pixivID)
+                    if (illust.width === 100 && illust.height === 100 && path.basename(illust.image_urls.medium)
+                        .includes("limit_unknown")) throw new Error("bad illust")
+                    await pixiv.util.downloadIllust(illust, pixivFolder, "original")
+                } catch {
+                    if (!fs.existsSync(unrecoverableFolder)) fs.mkdirSync(unrecoverableFolder)
+                    let src = path.join(originalFolder, file)
+                    let dest = path.join(unrecoverableFolder, `${pixivID}${path.extname(file)}`)
+                    fs.copyFileSync(src, dest)
+                }
+            } else {
+                if (!fs.existsSync(unrecoverableFolder)) fs.mkdirSync(unrecoverableFolder)
+                let src = path.join(originalFolder, file)
+                let dest = path.join(unrecoverableFolder, file)
+                fs.copyFileSync(src, dest)
+            }
         }
     }
 
